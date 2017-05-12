@@ -139,6 +139,7 @@ struct segdesc {
 #define PTE_D           0x040   // Dirty
 #define PTE_PS          0x080   // Page Size
 #define PTE_MBZ         0x180   // Bits must be zero
+#define PTE_PG          0x200   // Paged out to secondary storage 
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
@@ -146,6 +147,18 @@ struct segdesc {
 
 #ifndef __ASSEMBLER__
 typedef uint pte_t;
+
+
+#define MAX_PYSC_PAGES 15
+#define MAX_TOTAL_PAGES 30
+// Paged out pages struct
+enum page_struct_state {NOTUSED, USED}; 
+struct pagedout {
+  enum page_struct_state state;  
+  uint pagePAddr;
+  unsigned char data[PGSIZE];
+};
+
 
 // Task state segment format
 struct taskstate {

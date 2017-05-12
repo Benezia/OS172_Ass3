@@ -673,9 +673,7 @@ char* itoa(int i, char b[]){
     return b;
 }
 //remove swap file of proc p;
-int
-removeSwapFile(struct proc* p)
-{
+int removeSwapFile(struct proc* p){
 	//path of proccess
 	char path[DIGITS];
 	memmove(path,"/.swap", 6);
@@ -741,49 +739,83 @@ removeSwapFile(struct proc* p)
 }
 
 
+
+//return as sys_read (-1 when error)
+int readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size){
+  p->swapFile->off = placeOnFile;
+  return fileread(p->swapFile, buffer,  size);
+}
+
+//return as sys_write (-1 when error)
+int writeToSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size){
+  p->swapFile->off = placeOnFile;
+  return filewrite(p->swapFile, buffer, size);
+}
+
+
+int getFreePlaceOnFileIndex(struct proc * p) {
+  struct pagedout buffer;
+  int pagedoutSize = sizeof(struct pagedout);
+  int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
+  int i;
+  for (i = 0; i < maxStructCount; i++) {
+    if (readFromSwapFile(p, (char*)(&buffer), i*pagedoutSize, pagedoutSize) == -1)
+      return -1; //error
+    if (buffer.state == NOTUSED)
+      return i*pagedoutSize;
+  }
+  //if reached here - there is no place in file
+  return -1;
+}
+
+int writePageToFile(struct proc * p, uint pagePAddr, unsigned char * data) {
+  struct pagedout buffer;
+  buffer.state = USED;
+  buffer.pagePAddr = pagePAddr;
+  int i;
+  for (i = 0; i < PGSIZE; i++)
+    buffer.data[i] = data[i];
+  int placeOnFile = getFreePlaceOnFileIndex(p);
+  if (placeOnFile == -1)
+    return -1;
+  return writeToSwapFile(p, (char*)(&buffer), placeOnFile, sizeof(struct pagedout));
+}
+
+void initSwapStructs(struct proc* p) {
+  int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
+  int buffsize = sizeof(struct pagedout)*maxStructCount;
+  struct pagedout buffer[maxStructCount];
+  int i;
+  for (i = 0; i < maxStructCount; i++){
+    struct pagedout pagedOut;
+    pagedOut.state = NOTUSED;
+    buffer[i] = pagedOut;
+  }
+  writeToSwapFile(p, (char*)buffer, 0, buffsize); 
+}
+
 //return 0 on success
-int
-createSwapFile(struct proc* p)
-{
+int createSwapFile(struct proc* p){
 
 	char path[DIGITS];
 	memmove(path,"/.swap", 6);
 	itoa(p->pid, path+ 6);
 
-    begin_op();
-    struct inode * in = create(path, T_FILE, 0, 0);
+  begin_op();
+  struct inode * in = create(path, T_FILE, 0, 0);
 	iunlock(in);
 
 	p->swapFile = filealloc();
 	if (p->swapFile == 0)
-		panic("no slot for files on /store");
+	panic("no slot for files on /store");
 
 	p->swapFile->ip = in;
 	p->swapFile->type = FD_INODE;
 	p->swapFile->off = 0;
 	p->swapFile->readable = O_WRONLY;
 	p->swapFile->writable = O_RDWR;
-    end_op();
-
-    return 0;
-}
-
-//return as sys_write (-1 when error)
-int
-writeToSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size)
-{
-	p->swapFile->off = placeOnFile;
-
-	return filewrite(p->swapFile, buffer, size);
-
-}
-
-//return as sys_read (-1 when error)
-int
-readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size)
-{
-	p->swapFile->off = placeOnFile;
-
-	return fileread(p->swapFile, buffer,  size);
+  end_op();
+  initSwapStructs(p);
+  return 0;
 }
 
