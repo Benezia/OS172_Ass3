@@ -752,46 +752,35 @@ int writeToSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size){
   return filewrite(p->swapFile, buffer, size);
 }
 
-
 int getFreePlaceOnFileIndex(struct proc * p) {
-  struct pagedout buffer;
-  int pagedoutSize = sizeof(struct pagedout);
   int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
   int i;
   for (i = 0; i < maxStructCount; i++) {
-    if (readFromSwapFile(p, (char*)(&buffer), i*pagedoutSize, pagedoutSize) == -1)
-      return -1; //error
-    if (buffer.state == NOTUSED)
-      return i*pagedoutSize;
+    if (p->ctrlrBuff[i].state == NOTUSED)
+      return i;
   }
-  //if reached here - there is no place in file
-  return -1;
+  return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, uint pagePAddr, unsigned char * data) {
-  struct pagedout buffer;
-  buffer.state = USED;
-  buffer.pagePAddr = pagePAddr;
-  int i;
-  for (i = 0; i < PGSIZE; i++)
-    buffer.data[i] = data[i];
-  int placeOnFile = getFreePlaceOnFileIndex(p);
-  if (placeOnFile == -1)
-    return -1;
-  return writeToSwapFile(p, (char*)(&buffer), placeOnFile, sizeof(struct pagedout));
+int writePageToFile(struct proc * p, uint pagePAddr, char * data) {
+  int freePlace = getFreePlaceOnFileIndex(p);
+  if (freePlace == -1)
+    return -1; //file is full
+  p->ctrlrBuff[freePlace].state = USED;
+  p->ctrlrBuff[freePlace].pagePAddr = pagePAddr;
+  return writeToSwapFile(p, data, PGSIZE*freePlace, PGSIZE);
 }
 
-void initSwapStructs(struct proc* p) {
+void readPageFromFile(struct proc * p, uint pagePAddr, char * buff) {
   int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
-  int buffsize = sizeof(struct pagedout)*maxStructCount;
-  struct pagedout buffer[maxStructCount];
   int i;
-  for (i = 0; i < maxStructCount; i++){
-    struct pagedout pagedOut;
-    pagedOut.state = NOTUSED;
-    buffer[i] = pagedOut;
+  for (i = 0; i < maxStructCount; i++) {
+    if (p->ctrlrBuff[i].pagePAddr == pagePAddr) {
+      readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
+      return;
+    }
   }
-  writeToSwapFile(p, (char*)buffer, 0, buffsize); 
+  //if reached here - physical address given is not paged out (not found)
 }
 
 //return 0 on success
@@ -815,7 +804,6 @@ int createSwapFile(struct proc* p){
 	p->swapFile->readable = O_WRONLY;
 	p->swapFile->writable = O_RDWR;
   end_op();
-  initSwapStructs(p);
   return 0;
 }
 

@@ -26,6 +26,13 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
+
+void initSwapStructs(struct proc* p) {
+  int i;
+  for (i = 0; i < MAX_TOTAL_PAGES - MAX_PYSC_PAGES; i++)
+    p->ctrlrBuff[i].state = NOTUSED;
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize

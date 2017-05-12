@@ -235,8 +235,8 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
     mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
     i++;
   }
-  cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
-          proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
+  // cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
+          // proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
 
   return newsz;
 }
@@ -268,7 +268,7 @@ int deallocuvm(pde_t *pgdir, uint oldsz, uint newsz){
       *pte = 0;
     }
   }
-  cprintf("de-allocuvm: proc %d freed %d pages (size %d)\n", proc->pid, i, i*PGSIZE);
+  // cprintf("de-allocuvm: proc %d freed %d pages (size %d)\n", proc->pid, i, i*PGSIZE);
   return newsz;
 }
 
@@ -290,7 +290,7 @@ freevm(pde_t *pgdir)
       j++;
     }
   }
-  cprintf("freevm: removed proc's %d page directory: %p and %d page tables\n", proc->pid, pgdir, j);
+  // cprintf("freevm: removed proc's %d page directory: %p and %d page tables\n", proc->pid, pgdir, j);
   kfree((char*)pgdir); //free page directory
 }
 
@@ -332,8 +332,8 @@ pde_t* copyuvm(pde_t *pgdir, uint sz){
     if(mappages(d, (void*)i, PGSIZE, v2p(mem), flags) < 0)
       goto bad;
   }
-  cprintf("copyuvm: copied %d pages (size %d) from proc %d (sz: %d, PDE %p) to PDE %p\n", 
-    j, j*PGSIZE, proc->pid, proc->sz, pgdir, d);
+  // cprintf("copyuvm: copied %d pages (size %d) from proc %d (sz: %d, PDE %p) to PDE %p\n", 
+    // j, j*PGSIZE, proc->pid, proc->sz, pgdir, d);
   return d;
 
 bad:

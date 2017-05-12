@@ -69,6 +69,7 @@ struct proc {
 
   //Swap file. must initiate with create swap file
   struct file *swapFile;			//page file
+  struct pagedOutController ctrlrBuff[MAX_TOTAL_PAGES-MAX_PYSC_PAGES];
 
 };
 

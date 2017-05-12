@@ -153,10 +153,9 @@ typedef uint pte_t;
 #define MAX_TOTAL_PAGES 30
 // Paged out pages struct
 enum page_struct_state {NOTUSED, USED}; 
-struct pagedout {
+struct pagedOutController {
   enum page_struct_state state;  
   uint pagePAddr;
-  unsigned char data[PGSIZE];
 };
 
 
