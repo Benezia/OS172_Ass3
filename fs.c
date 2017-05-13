@@ -752,35 +752,47 @@ int writeToSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size){
   return filewrite(p->swapFile, buffer, size);
 }
 
-int getFreePlaceOnFileIndex(struct proc * p) {
+int getFreeSlot(struct proc * p) {
   int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
   int i;
   for (i = 0; i < maxStructCount; i++) {
-    if (p->ctrlrBuff[i].state == NOTUSED)
+    if (p->fileCtrlr[i].state == NOTUSED)
       return i;
   }
   return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, uint pagePAddr, char * data) {
-  int freePlace = getFreePlaceOnFileIndex(p);
-  if (freePlace == -1)
-    return -1; //file is full
-  p->ctrlrBuff[freePlace].state = USED;
-  p->ctrlrBuff[freePlace].pagePAddr = pagePAddr;
-  return writeToSwapFile(p, data, PGSIZE*freePlace, PGSIZE);
+int writePageToFile(struct proc * p, int ramCtrlrIndex, char * data) {
+  int freePlace = getFreeSlot(p);
+  if (freePlace == -1 || ramCtrlrIndex < 0 || ramCtrlrIndex > MAX_PYSC_PAGES)
+    return -1;
+  int retInt = writeToSwapFile(p, data, PGSIZE*freePlace, PGSIZE);
+  if (retInt == -1)
+    return -1;
+  //if reached here - data was successfully placed in file
+  p->fileCtrlr[freePlace] = p->ramCtrlr[ramCtrlrIndex];
+  p->fileCtrlr[freePlace].accessCount = 0;
+  p->fileCtrlr[freePlace].loadOrder = 0;
+  p->ramCtrlr[ramCtrlrIndex].state = NOTUSED;
+  return retInt;
 }
 
-void readPageFromFile(struct proc * p, uint pagePAddr, char * buff) {
+int readPageFromFile(struct proc * p, int ramCtrlrIndex, int pagePAddr, char * buff) {
   int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
   int i;
+  int retInt;
   for (i = 0; i < maxStructCount; i++) {
-    if (p->ctrlrBuff[i].pagePAddr == pagePAddr) {
-      readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
-      return;
+    if (p->fileCtrlr[i].pagePAddr == pagePAddr) {
+      retInt = readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
+      if (retInt == -1)
+        break; //error in read
+      p->ramCtrlr[ramCtrlrIndex] = p->fileCtrlr[i];
+      p->fileCtrlr[i].state = NOTUSED;
+      return retInt;
     }
   }
   //if reached here - physical address given is not paged out (not found)
+  return -1;
 }
 
 //return 0 on success

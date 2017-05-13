@@ -151,13 +151,6 @@ typedef uint pte_t;
 
 #define MAX_PYSC_PAGES 15
 #define MAX_TOTAL_PAGES 30
-// Paged out pages struct
-enum page_struct_state {NOTUSED, USED}; 
-struct pagedOutController {
-  enum page_struct_state state;  
-  uint pagePAddr;
-};
-
 
 // Task state segment format
 struct taskstate {

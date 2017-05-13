@@ -30,7 +30,7 @@ pinit(void)
 void initSwapStructs(struct proc* p) {
   int i;
   for (i = 0; i < MAX_TOTAL_PAGES - MAX_PYSC_PAGES; i++)
-    p->ctrlrBuff[i].state = NOTUSED;
+    p->fileCtrlr[i].state = NOTUSED;
 }
 
 //PAGEBREAK: 32
@@ -66,6 +66,7 @@ found:
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
+  p->loadOrderCounter = 0;
   
   // Set up new context to start executing at forkret,
   // which returns to trapret.
@@ -173,8 +174,35 @@ fork(void)
   return pid;
 }
 
+
+
+void printRamPC(){
+  cprintf("Process %d ram pages: \n", proc->pid);
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED) {
+      cprintf("\t PageIndex: %d\n", i);
+      cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
+      cprintf("\t Physical Addr: %p\n", proc->ramCtrlr[i].pagePAddr);
+      cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
+
+    } else
+      cprintf("\t PageIndex: %d UNUSED\n", i);
+  }
+
+}
+
 int procsize(void){
-    return proc->sz;
+  // #if SCFIFO
+  //   cprintf("bla1\n");
+  // #else
+  //   cprintf("bla2\n");
+  // #endif
+
+  printRamPC();
+
+
+  return proc->sz;
 }
 
 // Exit the current process.  Does not return.

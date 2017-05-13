@@ -51,6 +51,18 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+enum page_struct_state {NOTUSED, USED}; 
+
+// pages struct
+struct pagecontroller {
+  enum page_struct_state state;  
+  uint pagePAddr;
+  uint accessCount;
+  uint loadOrder;
+};
+
+
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -69,8 +81,9 @@ struct proc {
 
   //Swap file. must initiate with create swap file
   struct file *swapFile;			//page file
-  struct pagedOutController ctrlrBuff[MAX_TOTAL_PAGES-MAX_PYSC_PAGES];
-
+  struct pagecontroller fileCtrlr[MAX_TOTAL_PAGES-MAX_PYSC_PAGES];
+  struct pagecontroller ramCtrlr[MAX_PYSC_PAGES];
+  uint loadOrderCounter; //load/creation
 };
 
 // Process memory is laid out contiguously, low addresses first:

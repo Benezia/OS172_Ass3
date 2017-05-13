@@ -62,6 +62,7 @@ static pte_t * walkpgdir(pde_t *pgdir, const void *va, int alloc){
   return &pgtab[PTX(va)]; //return PTE in page table which corresponse to va address
 }
 
+
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
@@ -211,6 +212,41 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
+
+
+static void swap(pde_t *pgdir, void *va, uint size, uint pa, int flags){
+  cprintf("SWAP!!\n");
+
+}
+
+void addToRamCtrlr(uint pagePAddr) {
+  if (proc == 0)
+    return;
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED)
+      continue;
+    break;
+  }
+  proc->ramCtrlr[i].state = USED;
+  proc->ramCtrlr[i].pagePAddr = pagePAddr;
+  proc->ramCtrlr[i].loadOrder = proc->loadOrderCounter++;
+  proc->ramCtrlr[i].accessCount = 0;
+}
+
+void removeFromRamCtrlr(uint pagePAddr) {
+  if (proc == 0)
+    return;
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED && proc->ramCtrlr[i].pagePAddr == pagePAddr){
+      proc->ramCtrlr[i].state = NOTUSED;
+      return;
+    }
+  }
+  
+}
+
 // Allocate page tables and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
@@ -221,22 +257,33 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
     return 0;
   if(newsz < oldsz)
     return oldsz;
+  if (PGROUNDUP(newsz)/PGSIZE > MAX_TOTAL_PAGES && proc->pid > 1) {
+    cprintf("proc is too big\n", PGROUNDUP(newsz)/PGSIZE);
+    return 0;
+  }
 
   a = PGROUNDUP(oldsz);
   int i = 0; //debugging
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
+    i++;
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
-    i++;
+
+
+    if (PGROUNDUP(oldsz)/PGSIZE + i > MAX_PYSC_PAGES && proc->pid > 1)
+      swap(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
+    else { //there's room
+      mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
+      addToRamCtrlr(v2p(mem));
+    }
   }
-  // cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
-          // proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
+  cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
+           proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
 
   return newsz;
 }
@@ -264,11 +311,12 @@ int deallocuvm(pde_t *pgdir, uint oldsz, uint newsz){
         panic("kfree");
       char *v = p2v(pa);
       kfree(v); //free page
+      removeFromRamCtrlr(pa);
       i++;
       *pte = 0;
     }
   }
-  // cprintf("de-allocuvm: proc %d freed %d pages (size %d)\n", proc->pid, i, i*PGSIZE);
+  cprintf("de-allocuvm: proc %d freed %d pages (size %d)\n", proc->pid, i, i*PGSIZE);
   return newsz;
 }
 
