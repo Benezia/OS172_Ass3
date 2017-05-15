@@ -762,11 +762,11 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, int ramCtrlrIndex, char * data) {
+int writePageToFile(struct proc * p, int ramCtrlrIndex, char* pageVaddr) {
   int freePlace = getFreeSlot(p);
   if (freePlace == -1 || ramCtrlrIndex < 0 || ramCtrlrIndex > MAX_PYSC_PAGES)
     return -1;
-  int retInt = writeToSwapFile(p, data, PGSIZE*freePlace, PGSIZE);
+  int retInt = writeToSwapFile(p, pageVaddr, PGSIZE*freePlace, PGSIZE);
   if (retInt == -1)
     return -1;
   //if reached here - data was successfully placed in file

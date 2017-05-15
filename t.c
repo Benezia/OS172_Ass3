@@ -6,7 +6,9 @@
 
 
 int main(int argc, char *argv[]){
-	malloc (56000);
 	procsize();
+	malloc (56000);
+	//procsize();
+
 	exit();
 }

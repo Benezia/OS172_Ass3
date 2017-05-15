@@ -214,10 +214,65 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 
 
 
-static void swap(pde_t *pgdir, void *va, uint size, uint pa, int flags){
-  cprintf("SWAP!!\n");
-
+int getRAMCtrlrIndex(int isMax){
+  int i; 
+  int pageIndex = 0;
+  int loadOrder = proc->ramCtrlr[0].loadOrder;
+  for (i = 1; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED) {
+      if (isMax) {
+        if (proc->ramCtrlr[i].loadOrder > loadOrder) {
+          loadOrder = proc->ramCtrlr[i].loadOrder;
+          pageIndex = i;
+        }
+      } else {
+        if (proc->ramCtrlr[i].loadOrder <= loadOrder) {
+          loadOrder = proc->ramCtrlr[i].loadOrder;
+          pageIndex = i;
+        }
+      }
+    }
+  }
+  return pageIndex;
 }
+
+void fixPagedOutPTE(int ramCtrlrIndex){
+  int pagePAddr = proc->ramCtrlr[ramCtrlrIndex].pagePAddr;
+  pte_t *pte;
+  pte = walkpgdir(proc->pgdir, p2v(pagePAddr), 1);
+  *pte |= PTE_PG;
+  *pte &= ~PTE_P;
+}
+
+void printRamPC2(){
+  cprintf("Process %d ram pages: \n", proc->pid);
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED) {
+      cprintf("\t PageIndex: %d\n", i);
+      cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
+      cprintf("\t Physical Addr: %p\n", proc->ramCtrlr[i].pagePAddr);
+      cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
+
+    } else
+      cprintf("\t PageIndex: %d UNUSED\n", i);
+  }
+}
+void printFilePC(){
+  cprintf("Process %d File pages: \n", proc->pid);
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->fileCtrlr[i].state == USED) {
+      cprintf("\t PageIndex: %d\n", i);
+      cprintf("\t Page Load Index: %d\n", proc->fileCtrlr[i].loadOrder);
+      cprintf("\t Physical Addr: %p\n", proc->fileCtrlr[i].pagePAddr);
+      cprintf("\t Page Access Count: %d\n\n", proc->fileCtrlr[i].accessCount);
+
+    } else
+      cprintf("\t PageIndex: %d UNUSED\n", i);
+  }
+}
+
 
 void addToRamCtrlr(uint pagePAddr) {
   if (proc == 0)
@@ -233,6 +288,35 @@ void addToRamCtrlr(uint pagePAddr) {
   proc->ramCtrlr[i].loadOrder = proc->loadOrderCounter++;
   proc->ramCtrlr[i].accessCount = 0;
 }
+
+void swap(pde_t *pgdir, uint pagePAddr){
+  cprintf("SWAP!!\n");
+  #if LIFO
+    cprintf("LIFO\n");
+    int outIndex = getRAMCtrlrIndex(1);
+    cprintf("outIndex: %d\n", outIndex);
+    writePageToFile(proc, outIndex, p2v(proc->ramCtrlr[outIndex].pagePAddr));
+    cprintf("written page to file\n");
+    fixPagedOutPTE(outIndex);
+    cprintf("PTE flags were marked\n");
+    addToRamCtrlr(pagePAddr);
+    cprintf("pages swapped in ramCtrlr\n");
+    printRamPC2();
+    printFilePC();
+  #else
+    #if SCFIFO
+      cprintf("SCFIFO\n");
+    #else
+      #if LAP
+        cprintf("LAP\n");
+      #else
+        cprintf("DEFAULT\n");
+      #endif
+    #endif
+  #endif
+}
+
+
 
 void removeFromRamCtrlr(uint pagePAddr) {
   if (proc == 0)
@@ -274,9 +358,8 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
     }
     memset(mem, 0, PGSIZE);
 
-
     if (PGROUNDUP(oldsz)/PGSIZE + i > MAX_PYSC_PAGES && proc->pid > 1)
-      swap(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
+      swap(pgdir, v2p(mem));
     else { //there's room
       mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
       addToRamCtrlr(v2p(mem));

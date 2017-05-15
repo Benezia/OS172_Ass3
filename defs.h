@@ -55,6 +55,12 @@ int				createSwapFile(struct proc* p);
 int				readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int				writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int				removeSwapFile(struct proc* p);
+int 			writePageToFile(struct proc * p, int ramCtrlrIndex, char* pageVaddr);
+int 			readPageFromFile(struct proc * p, int ramCtrlrIndex, int pagePAddr, char * buff);
+
+
+
+
 // ide.c
 void            ideinit(void);
 void            ideintr(void);

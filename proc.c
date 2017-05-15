@@ -67,7 +67,9 @@ found:
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
   p->loadOrderCounter = 0;
-  
+  if(p->pid > 1)
+    createSwapFile(p);
+
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= 4;
@@ -193,15 +195,7 @@ void printRamPC(){
 }
 
 int procsize(void){
-  // #if SCFIFO
-  //   cprintf("bla1\n");
-  // #else
-  //   cprintf("bla2\n");
-  // #endif
-
   printRamPC();
-
-
   return proc->sz;
 }
 
