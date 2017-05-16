@@ -738,8 +738,6 @@ int removeSwapFile(struct proc* p){
 
 }
 
-
-
 //return as sys_read (-1 when error)
 int readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size){
   p->swapFile->off = placeOnFile;
@@ -762,18 +760,16 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, int ramCtrlrIndex, char* pageVaddr) {
+int writePageToFile(struct proc * p, char* pageVaddr, int pagePAddr) {
   int freePlace = getFreeSlot(p);
-  if (freePlace == -1 || ramCtrlrIndex < 0 || ramCtrlrIndex > MAX_PYSC_PAGES)
-    return -1;
   int retInt = writeToSwapFile(p, pageVaddr, PGSIZE*freePlace, PGSIZE);
   if (retInt == -1)
     return -1;
   //if reached here - data was successfully placed in file
-  p->fileCtrlr[freePlace] = p->ramCtrlr[ramCtrlrIndex];
+  p->fileCtrlr[freePlace].state = USED;
+  p->fileCtrlr[freePlace].pagePAddr = pagePAddr;
   p->fileCtrlr[freePlace].accessCount = 0;
   p->fileCtrlr[freePlace].loadOrder = 0;
-  p->ramCtrlr[ramCtrlrIndex].state = NOTUSED;
   return retInt;
 }
 

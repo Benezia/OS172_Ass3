@@ -7,8 +7,10 @@
 
 int main(int argc, char *argv[]){
 	procsize();
-	malloc (56000);
-	//procsize();
+	malloc (60000);
+	//malloc (1);
 
+	//procsize();
+	//badMalloc = badMalloc;
 	exit();
 }

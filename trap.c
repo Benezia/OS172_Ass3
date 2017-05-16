@@ -33,9 +33,7 @@ idtinit(void)
 }
 
 //PAGEBREAK: 41
-void
-trap(struct trapframe *tf)
-{
+void trap(struct trapframe *tf){
   if(tf->trapno == T_SYSCALL){
     if(proc->killed)
       exit();
@@ -77,6 +75,13 @@ trap(struct trapframe *tf)
             cpu->id, tf->cs, tf->eip);
     lapiceoi();
     break;
+
+
+  case T_PGFLT:
+    if (proc != 0 && pageIsInFile(rcr2())){
+      if (getPageFromFile((uint)rcr2()))
+        break;
+    }
    
   //PAGEBREAK: 13
   default:

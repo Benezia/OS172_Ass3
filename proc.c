@@ -191,7 +191,6 @@ void printRamPC(){
     } else
       cprintf("\t PageIndex: %d UNUSED\n", i);
   }
-
 }
 
 int procsize(void){
