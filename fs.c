@@ -760,29 +760,32 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, char* pageVaddr, int pagePAddr) {
+int writePageToFile(struct proc * p, int pageVaddr, int pagePAddr) {
   int freePlace = getFreeSlot(p);
-  int retInt = writeToSwapFile(p, pageVaddr, PGSIZE*freePlace, PGSIZE);
+  int retInt = writeToSwapFile(p, (char*)pageVaddr, PGSIZE*freePlace, PGSIZE);
   if (retInt == -1)
     return -1;
   //if reached here - data was successfully placed in file
   p->fileCtrlr[freePlace].state = USED;
+  p->fileCtrlr[freePlace].userPageVAddr = (int)pageVaddr;
   p->fileCtrlr[freePlace].pagePAddr = pagePAddr;
   p->fileCtrlr[freePlace].accessCount = 0;
   p->fileCtrlr[freePlace].loadOrder = 0;
   return retInt;
 }
 
-int readPageFromFile(struct proc * p, int ramCtrlrIndex, int pagePAddr, char * buff) {
+int readPageFromFile(struct proc * p, int ramCtrlrIndex, int userPageVAddr, char * buff) {
   int maxStructCount = (MAX_TOTAL_PAGES - MAX_PYSC_PAGES);
   int i;
   int retInt;
   for (i = 0; i < maxStructCount; i++) {
-    if (p->fileCtrlr[i].pagePAddr == pagePAddr) {
+    if (p->fileCtrlr[i].userPageVAddr == userPageVAddr) {
       retInt = readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
+      cprintf("FAULT: FILE->RAM: %d\n", i);
       if (retInt == -1)
         break; //error in read
       p->ramCtrlr[ramCtrlrIndex] = p->fileCtrlr[i];
+      p->ramCtrlr[ramCtrlrIndex].loadOrder = proc->loadOrderCounter++;
       p->fileCtrlr[i].state = NOTUSED;
       return retInt;
     }

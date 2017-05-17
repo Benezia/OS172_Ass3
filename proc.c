@@ -185,7 +185,8 @@ void printRamPC(){
     if (proc->ramCtrlr[i].state == USED) {
       cprintf("\t PageIndex: %d\n", i);
       cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: %p\n", proc->ramCtrlr[i].pagePAddr);
+      cprintf("\t Physical Addr: 0x%p\n", proc->ramCtrlr[i].pagePAddr);
+      cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
       cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
 
     } else
@@ -265,6 +266,7 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        //removeSwapFile(p);
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
