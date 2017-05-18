@@ -301,9 +301,9 @@ void printRamPC2(){
     if (proc->ramCtrlr[i].state == USED) {
       cprintf("\t PageIndex: %d\n", i);
       cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: 0x%p\n", proc->ramCtrlr[i].pagePAddr);
-      cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
-      cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
+      //cprintf("\t Physical Addr: 0x%p\n", proc->ramCtrlr[i].pagePAddr);
+      cprintf("\t User Virtual Addr: 0x%p\n\n", proc->ramCtrlr[i].userPageVAddr);
+      //cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
 
     } else
       cprintf("\t PageIndex: %d UNUSED\n", i);
@@ -315,10 +315,10 @@ void printFilePC(){
   for (i = 0; i < MAX_PYSC_PAGES; i++) {
     if (proc->fileCtrlr[i].state == USED) {
       cprintf("\t PageIndex: %d\n", i);
-      cprintf("\t Page Load Index: %d\n", proc->fileCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: 0x%p\n", proc->fileCtrlr[i].pagePAddr);
-      cprintf("\t User Virtual Addr: 0x%p\n", proc->fileCtrlr[i].userPageVAddr);
-      cprintf("\t Page Access Count: %d\n\n", proc->fileCtrlr[i].accessCount);
+      //cprintf("\t Page Load Index: %d\n", proc->fileCtrlr[i].loadOrder);
+      //cprintf("\t Physical Addr: 0x%p\n", proc->fileCtrlr[i].pagePAddr);
+      cprintf("\t User Virtual Addr: 0x%p\n\n", proc->fileCtrlr[i].userPageVAddr);
+      //cprintf("\t Page Access Count: %d\n\n", proc->fileCtrlr[i].accessCount);
 
     } else
       cprintf("\t PageIndex: %d UNUSED\n", i);
@@ -341,17 +341,15 @@ int getPageFromFile(int userPageVAddr){
   fixPagedInPTE(userPageVAddr, v2p(newPg));
   int outPagePAddr = getPagePAddr(outPage.userPageVAddr);
   writePageToFile(proc, outPage.userPageVAddr, outPagePAddr);
-  fixPagedOutPTE(outPagePAddr);
+  fixPagedOutPTE(outPage.userPageVAddr);
   lcr3(v2p(proc->pgdir)); //refresh CR3 register
   char *v = p2v(outPagePAddr);
   kfree(v); //free swapped page
+  cprintf("FAULT: RAM->File: %d, %p\n", outIndex, outPage.userPageVAddr);
   // printRamPC2(); //DEBUGGING
   // printFilePC(); //DEBUGGING
-  cprintf("FAULT: RAM->File: %d\n", outIndex);
   return 1;
 }
-
-
 
 
 void addToRamCtrlr(uint pagePAddr, uint userPageVAddr) {
@@ -366,7 +364,7 @@ void addToRamCtrlr(uint pagePAddr, uint userPageVAddr) {
 
 void swap(pde_t *pgdir, uint pagePAddr, uint userPageVAddr){
   int outIndex = getPageOutIndex();
-  cprintf("NEW PAGE: RAM->File: %d\n", outIndex);
+  cprintf("NEW PAGE: RAM->File: %d, %p\n", outIndex, proc->ramCtrlr[outIndex].userPageVAddr);
   int outPagePAddr = getPagePAddr(proc->ramCtrlr[outIndex].userPageVAddr);
   writePageToFile(proc, proc->ramCtrlr[outIndex].userPageVAddr, outPagePAddr);
   char *v = p2v(outPagePAddr);
@@ -411,14 +409,19 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
       swap(pgdir, v2p(mem), a);
     else //there's room
       addToRamCtrlr(v2p(mem), a);
+    cprintf("allocuvm: allocated page: %p\n", a);
   }
-  //cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
-  //         proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
+  cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
+          proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
 
   return newsz;
 }
 
+
+//This must use userVaddress+pgdir addresses!
+//(The proc has identical vAddresses on different page directories until exec finish executing)
 void removeFromRamCtrlr(uint pagePAddr){
+  //TODO: FIX THIS
   if (proc == 0)
     return;
   int i;
@@ -453,22 +456,20 @@ int deallocuvm(pde_t *pgdir, uint oldsz, uint newsz){
         panic("kfree");
       char *v = p2v(pa);
       kfree(v); //free page
+      cprintf("deallocuvm: deallocated page: %p\n", a);
       removeFromRamCtrlr(pa);
       i++;
       *pte = 0;
     }
   }
-  // cprintf("de-allocuvm: proc %d freed %d pages (size %d)\n", proc->pid, i, i*PGSIZE);
+  cprintf("de-allocuvm: proc %d freed %d pages (size %d) on %p\n", proc->pid, i, i*PGSIZE, pgdir);
   return newsz;
 }
 
 // Free a page table and all the physical memory pages
 // in the user part.
-void
-freevm(pde_t *pgdir)
-{
+void freevm(pde_t *pgdir){
   uint i;
-
   if(pgdir == 0)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, KERNBASE, 0);
@@ -480,7 +481,7 @@ freevm(pde_t *pgdir)
       j++;
     }
   }
-  // cprintf("freevm: removed proc's %d page directory: %p and %d page tables\n", proc->pid, pgdir, j);
+  //cprintf("freevm: removed proc's %d page directory: %p and %d page tables\n", proc->pid, pgdir, j);
   kfree((char*)pgdir); //free page directory
 }
 

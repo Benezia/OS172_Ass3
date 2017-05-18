@@ -781,7 +781,7 @@ int readPageFromFile(struct proc * p, int ramCtrlrIndex, int userPageVAddr, char
   for (i = 0; i < maxStructCount; i++) {
     if (p->fileCtrlr[i].userPageVAddr == userPageVAddr) {
       retInt = readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
-      cprintf("FAULT: FILE->RAM: %d\n", i);
+      cprintf("FAULT: FILE->RAM: %d, %p\n", i, userPageVAddr);
       if (retInt == -1)
         break; //error in read
       p->ramCtrlr[ramCtrlrIndex] = p->fileCtrlr[i];

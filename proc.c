@@ -154,6 +154,12 @@ fork(void)
     return -1;
   }
   np->sz = proc->sz;
+  // for (i = 0; i < MAX_PYSC_PAGES; i++)
+  //   np->ramCtrlr[i] = proc->ramCtrlr[i]; //deep copies ramCtrlr list
+  
+  //TODO: copy fileCtrlr and file
+
+
   np->parent = proc;
   *np->tf = *proc->tf;
 
