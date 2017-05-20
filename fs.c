@@ -760,7 +760,7 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
-int writePageToFile(struct proc * p, int pageVaddr, int pagePAddr) {
+int writePageToFile(struct proc * p, int pageVaddr, int pagePAddr, pde_t *pgdir) {
   int freePlace = getFreeSlot(p);
   int retInt = writeToSwapFile(p, (char*)pageVaddr, PGSIZE*freePlace, PGSIZE);
   if (retInt == -1)
@@ -768,6 +768,7 @@ int writePageToFile(struct proc * p, int pageVaddr, int pagePAddr) {
   //if reached here - data was successfully placed in file
   p->fileCtrlr[freePlace].state = USED;
   p->fileCtrlr[freePlace].userPageVAddr = (int)pageVaddr;
+  p->fileCtrlr[freePlace].pgdir = pgdir;
   p->fileCtrlr[freePlace].pagePAddr = pagePAddr;
   p->fileCtrlr[freePlace].accessCount = 0;
   p->fileCtrlr[freePlace].loadOrder = 0;
@@ -816,5 +817,15 @@ int createSwapFile(struct proc* p){
 	p->swapFile->writable = O_RDWR;
   end_op();
   return 0;
+}
+
+
+void copySwapFile(struct proc* fromP, struct proc* toP){
+  char buff[PGSIZE];
+  int i;
+  for (i = 0; i < MAX_TOTAL_PAGES-MAX_PYSC_PAGES; i++){
+    readFromSwapFile(fromP, buff, PGSIZE*i, PGSIZE);
+    writeToSwapFile(toP, buff, PGSIZE, PGSIZE);
+  }
 }
 

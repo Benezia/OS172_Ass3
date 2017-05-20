@@ -78,7 +78,7 @@ void trap(struct trapframe *tf){
 
 
   case T_PGFLT:
-    if (proc != 0 && (tf->cs&3) == 3 &&pageIsInFile(rcr2())){
+    if (proc != 0 && (tf->cs&3) == 3 &&pageIsInFile(rcr2(), proc->pgdir)){
       if (getPageFromFile(rcr2()))
         break;
     }

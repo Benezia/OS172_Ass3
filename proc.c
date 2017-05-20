@@ -67,7 +67,7 @@ found:
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
   p->loadOrderCounter = 0;
-  if(p->pid > 1)
+  if(p->pid > 2)
     createSwapFile(p);
 
   // Set up new context to start executing at forkret,
@@ -154,11 +154,18 @@ fork(void)
     return -1;
   }
   np->sz = proc->sz;
-  // for (i = 0; i < MAX_PYSC_PAGES; i++)
-  //   np->ramCtrlr[i] = proc->ramCtrlr[i]; //deep copies ramCtrlr list
-  
-  //TODO: copy fileCtrlr and file
-
+  if (proc->pid > 2){
+    copySwapFile(proc, np);
+    np->loadOrderCounter = proc->loadOrderCounter;
+    for (i = 0; i < MAX_PYSC_PAGES; i++){
+      np->ramCtrlr[i] = proc->ramCtrlr[i]; //deep copies ramCtrlr list
+      np->ramCtrlr[i].pgdir = np->pgdir;  //replace parent pgdir with child new pgdir
+    }
+    for (i = 0; i < MAX_TOTAL_PAGES-MAX_PYSC_PAGES; i++){
+      np->fileCtrlr[i] = proc->fileCtrlr[i]; //deep copies fileCtrlr list
+      np->fileCtrlr[i].pgdir = np->pgdir;   //replace parent pgdir with child new pgdir
+    }
+  }
 
   np->parent = proc;
   *np->tf = *proc->tf;
@@ -183,25 +190,7 @@ fork(void)
 }
 
 
-
-void printRamPC(){
-  cprintf("Process %d ram pages: \n", proc->pid);
-  int i;
-  for (i = 0; i < MAX_PYSC_PAGES; i++) {
-    if (proc->ramCtrlr[i].state == USED) {
-      cprintf("\t PageIndex: %d\n", i);
-      cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: 0x%p\n", proc->ramCtrlr[i].pagePAddr);
-      cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
-      cprintf("\t Page Access Count: %d\n\n", proc->ramCtrlr[i].accessCount);
-
-    } else
-      cprintf("\t PageIndex: %d UNUSED\n", i);
-  }
-}
-
 int procsize(void){
-  printRamPC();
   return proc->sz;
 }
 
@@ -229,6 +218,11 @@ exit(void)
   iput(proc->cwd);
   end_op();
   proc->cwd = 0;
+
+  if (proc->pid > 2) {
+    removeSwapFile(proc);
+    printFileCtrlr();
+  }
 
   acquire(&ptable.lock);
 
@@ -272,9 +266,13 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
-        //removeSwapFile(p);
         p->state = UNUSED;
         p->pid = 0;
+        int i;
+        for (i = 0; i < MAX_PYSC_PAGES; i++)
+          p->ramCtrlr[i].state = NOTUSED;
+        for (i = 0; i < MAX_TOTAL_PAGES-MAX_PYSC_PAGES; i++)
+          p->fileCtrlr[i].state = NOTUSED;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;

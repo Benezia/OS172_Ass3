@@ -55,9 +55,9 @@ int				createSwapFile(struct proc* p);
 int				readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int				writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int				removeSwapFile(struct proc* p);
-int 			writePageToFile(struct proc * p, int pageVaddr, int pagePAddr);
+int 			writePageToFile(struct proc * p, int pageVaddr, int pagePAddr, pde_t *pgdir);
 int 			readPageFromFile(struct proc * p, int ramCtrlrIndex, int pagePAddr, char * buff);
-
+void 			copySwapFile(struct proc* fromP, struct proc* toP);
 
 
 
@@ -192,8 +192,10 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-int 			pageIsInFile(int vAddr);
+int 			pageIsInFile(int vAddr, pde_t *pgdir);
 int 			getPageFromFile(int vAddr);
+void			printRamCtrlr(); //debugging
+void 			printFileCtrlr();	//debugging
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
