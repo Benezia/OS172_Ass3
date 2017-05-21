@@ -214,15 +214,18 @@ exit(void)
     }
   }
 
+  if (proc->pid > 2) {
+    removeSwapFile(proc);
+    printFileCtrlr();
+    //printRamCtrlr();
+  }
+
+
   begin_op();
   iput(proc->cwd);
   end_op();
   proc->cwd = 0;
 
-  if (proc->pid > 2) {
-    removeSwapFile(proc);
-    printFileCtrlr();
-  }
 
   acquire(&ptable.lock);
 
