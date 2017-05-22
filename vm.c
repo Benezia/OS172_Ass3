@@ -76,11 +76,8 @@ static int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm){
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_P){
-      cprintf("PTE: %x\n", *pte);
-      cprintf("proc %d, pgdir: %p, pAddr: %p, currently mapped to: %p\n",proc->pid,pgdir, pa, PTE_ADDR(*pte));
+    if(*pte & PTE_P)
       panic("remap");         //PTE was already initialized for some reason
-    }
     *pte = pa | perm | PTE_P; //adds page physical address, flags, present bit
     if(a == last)
       break;
@@ -230,6 +227,8 @@ void fixPagedOutPTE(int userPageVAddr, pde_t * pgdir){
     panic("PTE of swapped page is missing");
   *pte |= PTE_PG;
   *pte &= ~PTE_P;
+  *pte &= PTE_FLAGS(*pte); //clear junk physical address
+  lcr3(v2p(proc->pgdir)); //refresh CR3 register
 }
 
 //This method cannot be replaced with mappages because mappages cannot turn off PTE_PG bit
@@ -238,9 +237,12 @@ void fixPagedInPTE(int userPageVAddr, int pagePAddr, pde_t * pgdir){
   pte = walkpgdir(pgdir, (int*)userPageVAddr, 0);
   if (!pte)
     panic("PTE of swapped page is missing");
-  *pte |= PTE_P;      //Turn on present bit
-  *pte &= ~PTE_PG;    //Turn off inFile bit
-  *pte |= pagePAddr;  //Map PTE to the new Page
+  if (*pte & PTE_P)
+  	panic("REMAP!");
+  *pte |= PTE_P | PTE_W | PTE_U;      //Turn on needed bits
+  *pte &= ~PTE_PG;    								//Turn off inFile bit
+  *pte |= pagePAddr;  								//Map PTE to the new Page
+  lcr3(v2p(proc->pgdir)); //refresh CR3 register
 }
 
 int pageIsInFile(int userPageVAddr, pde_t * pgdir) {
@@ -309,7 +311,6 @@ void printRamCtrlr(){
     if (proc->ramCtrlr[i].state == USED) {
       cprintf("\t PageIndex: %d\n", i);
       cprintf("\t Page Load Index: %d\n", proc->ramCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: 0x%p\n", proc->ramCtrlr[i].pagePAddr);
       cprintf("\t Page Directory: 0x%p\n", proc->ramCtrlr[i].pgdir);
       cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
       pte_t *pte;
@@ -329,7 +330,6 @@ void printFileCtrlr(){
     if (proc->fileCtrlr[i].state == USED) {
       cprintf("\t PageIndex: %d\n", i);
       //cprintf("\t Page Load Index: %d\n", proc->fileCtrlr[i].loadOrder);
-      cprintf("\t Physical Addr: 0x%p\n", proc->fileCtrlr[i].pagePAddr);
       cprintf("\t Page Directory: 0x%p\n", proc->fileCtrlr[i].pgdir);
       cprintf("\t User Virtual Addr: 0x%p\n", proc->fileCtrlr[i].userPageVAddr);
       pte_t *pte;
@@ -337,64 +337,61 @@ void printFileCtrlr(){
       cprintf("\t PTE: %x\n", *pte);
       //cprintf("\t Page Access Count: %d\n", proc->fileCtrlr[i].accessCount);
       cprintf("\n");
-
     } else
       cprintf("\t PageIndex: %d UNUSED\n", i);
   }
 }
 
-int getPageFromFile(int userPageVAddr){
-  // userPageVAddr = PGROUNDDOWN(userPageVAddr);
-  // char * newPg = kalloc();
-  // int outIndex = getFreeRamCtrlrIndex();
-  // lcr3(v2p(proc->pgdir)); //refresh CR3 register
-  // if (outIndex >= 0) { //Free location in RamCtrlr is available, no need for swapping
-  //   readPageFromFile(proc, outIndex, userPageVAddr, newPg);
-  //   fixPagedInPTE(userPageVAddr, v2p(newPg), proc->pgdir);
-  //   return 1; //Operation was successful
-  // }
-  // //If reached here - Swapping is needed.
-  // outIndex = getPageOutIndex();
-  // struct pagecontroller outPage = proc->ramCtrlr[outIndex];
-  // fixPagedInPTE(userPageVAddr, v2p(newPg), proc->pgdir);
-  // readPageFromFile(proc, outIndex, userPageVAddr, newPg); //automatically adds to ramctrlr
-  // int outPagePAddr = getPagePAddr(outPage.userPageVAddr, outPage.pgdir);
-  // writePageToFile(proc, outPage.userPageVAddr, outPagePAddr, outPage.pgdir);
-  // fixPagedOutPTE(outPage.userPageVAddr, outPage.pgdir);
-  // lcr3(v2p(proc->pgdir)); //refresh CR3 register
-  // char *v = p2v(outPagePAddr);
-  // kfree(v); //free swapped page
-  // cprintf("FAULT: RAM->File: %d, %p\n", outIndex, outPage.userPageVAddr);
-  // // printRamCtrlr(); //DEBUGGING
-  // // printFileCtrlr(); //DEBUGGING
+int getPageFromFile(int cr2){
+  int userPageVAddr = PGROUNDDOWN(cr2);
+  char * newPg = kalloc();
+  memset(newPg, 0, PGSIZE);
+  int outIndex = getFreeRamCtrlrIndex();
+  lcr3(v2p(proc->pgdir)); //refresh CR3 register
+  if (outIndex >= 0) { //Free location in RamCtrlr is available, no need for swapping
+    fixPagedInPTE(userPageVAddr, v2p(newPg), proc->pgdir);
+    readPageFromFile(proc, outIndex, userPageVAddr, (char*)userPageVAddr);
+    return 1; //Operation was successful
+  }
+  //If reached here - Swapping is needed.
+  outIndex = getPageOutIndex(); //select a page to swap to file
+  char buff[PGSIZE];
+  struct pagecontroller outPage = proc->ramCtrlr[outIndex];
+  fixPagedInPTE(userPageVAddr, v2p(newPg), proc->pgdir);
+  readPageFromFile(proc, outIndex, userPageVAddr, buff); //automatically adds to ramctrlr
+  int outPagePAddr = getPagePAddr(outPage.userPageVAddr, outPage.pgdir);
+  memmove(newPg, buff, PGSIZE);
+  writePageToFile(proc, outPage.userPageVAddr, outPage.pgdir);
+  fixPagedOutPTE(outPage.userPageVAddr, outPage.pgdir);
+  char *v = p2v(outPagePAddr);
+  kfree(v); //free swapped page
+  cprintf("FAULT: RAM->File: %d, %p\n", outIndex, outPage.userPageVAddr);
+  // printRamCtrlr(); //DEBUGGING
+  // printFileCtrlr(); //DEBUGGING
   return 1;
 }
 
-
-void addToRamCtrlr(uint pagePAddr, uint userPageVAddr, pde_t *pgdir) {
+void addToRamCtrlr(pde_t *pgdir, uint userPageVAddr) {
   int freeLocation = getFreeRamCtrlrIndex();
   proc->ramCtrlr[freeLocation].state = USED;
-  proc->ramCtrlr[freeLocation].pagePAddr = pagePAddr;
   proc->ramCtrlr[freeLocation].pgdir = pgdir;
   proc->ramCtrlr[freeLocation].userPageVAddr = userPageVAddr;
   proc->ramCtrlr[freeLocation].loadOrder = proc->loadOrderCounter++;
   proc->ramCtrlr[freeLocation].accessCount = 0;
   cprintf("NEW: %d, %p\n", freeLocation, userPageVAddr);
-
 }
 
 
-void swap(pde_t *pgdir, uint pagePAddr, uint userPageVAddr){
+void swap(pde_t *pgdir, uint userPageVAddr){
   int outIndex = getPageOutIndex();
   cprintf("NEW PAGE: RAM->File: %d, %p\n", outIndex, proc->ramCtrlr[outIndex].userPageVAddr);
   int outPagePAddr = getPagePAddr(proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
-  writePageToFile(proc, proc->ramCtrlr[outIndex].userPageVAddr, outPagePAddr, proc->ramCtrlr[outIndex].pgdir);
+  writePageToFile(proc, proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
   char *v = p2v(outPagePAddr);
   kfree(v); //free swapped page
   proc->ramCtrlr[outIndex].state = NOTUSED;
   fixPagedOutPTE(proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
-  addToRamCtrlr(pagePAddr, userPageVAddr, pgdir);
-  lcr3(v2p(proc->pgdir)); //refresh CR3 register
+  addToRamCtrlr(pgdir, userPageVAddr);
   // printRamCtrlr(); //DEBUGGING
   // printFileCtrlr(); //DEBUGGING
 }
@@ -428,9 +425,9 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
     mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
     if (proc->pid > 2) {
       if (PGROUNDUP(oldsz)/PGSIZE + i > MAX_PYSC_PAGES)
-        swap(pgdir, v2p(mem), a);
+        swap(pgdir, a);
       else //there's room
-        addToRamCtrlr(v2p(mem), a, pgdir);
+        addToRamCtrlr(pgdir, a);
     }
     cprintf("allocuvm: allocated page: %p on %p\n\n", a, pgdir);
 

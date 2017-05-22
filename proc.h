@@ -56,7 +56,6 @@ enum page_struct_state {NOTUSED, USED};
 // pages struct
 struct pagecontroller {
   enum page_struct_state state;  
-  uint pagePAddr;
   pde_t* pgdir;
   uint userPageVAddr;
   uint accessCount;

@@ -14,10 +14,11 @@ int main(int argc, char *argv[]){
 							// vm.c should bring back page #15 instead of #16
 		mtest[48001] = 'M'; // accesses page #15 (now on ram)
 		mtest2 = malloc(1);			// allocates 8 new pages (#1 - #14, #24 in ram, #15-#23 on file) 
+
 		mtest[48002] = 'L'; // accesses page #15 (currently on file in lifo)
 							// vm.c should bring back page #15
 		mtest[48003] = 0;  	// accesses page #15 (now on ram) instead of #24
-		//printf(1, "%s\n",&mtest[48000]);
+		printf(1, "%s\n",&mtest[48000]);
 		free(mtest);
 		free(mtest2);
 	}

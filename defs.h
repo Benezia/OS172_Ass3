@@ -55,8 +55,8 @@ int				createSwapFile(struct proc* p);
 int				readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int				writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int				removeSwapFile(struct proc* p);
-int 			writePageToFile(struct proc * p, int pageVaddr, int pagePAddr, pde_t *pgdir);
-int 			readPageFromFile(struct proc * p, int ramCtrlrIndex, int pagePAddr, char * buff);
+int 			writePageToFile(struct proc * p, int pageVaddr, pde_t *pgdir);
+int 			readPageFromFile(struct proc * p, int ramCtrlrIndex, int userPageVAddr, char* buff);
 void 			copySwapFile(struct proc* fromP, struct proc* toP);
 
 
