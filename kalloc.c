@@ -28,7 +28,7 @@ int getFreePages(){
 }
 
 int getTotalPages(){
-  return (uint)PHYSTOP-(uint)end;
+  return PGROUNDDOWN(PHYSTOP-v2p(end))/PGSIZE;
 }
 
 
@@ -49,6 +49,7 @@ void
 kinit2(void *vstart, void *vend)
 {
   freerange(vstart, vend);
+  cprintf("TEST: %d\n", freePages);
   kmem.use_lock = 1;
 }
 
