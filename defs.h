@@ -76,6 +76,8 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+int 			getFreePages();
+int 			getTotalPages();
 
 // kbd.c
 void            kbdintr(void);
@@ -197,6 +199,6 @@ int 			getPageFromFile(int vAddr);
 void			updateAccessCounters();
 void			printRamCtrlr(); //debugging
 void 			printFileCtrlr();	//debugging
-
+int             isNONEpolicy();
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

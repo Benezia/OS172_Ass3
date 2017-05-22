@@ -1,0 +1,8 @@
+where to limit paging: 
+1- vm.c- allocuvm DONE
+2- vm.c - deallocuvm DONE
+3- dont create swap file on procces init
+4- dont remove swap file when exit
+
+errors:
+1- trap when using larg malloc

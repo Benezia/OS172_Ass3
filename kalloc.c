@@ -11,6 +11,7 @@
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
+static int freePages = 0;
 
 struct run {
   struct run *next;
@@ -21,6 +22,15 @@ struct {
   int use_lock;
   struct run *freelist;
 } kmem;
+
+int getFreePages(){
+  return freePages;
+}
+
+int getTotalPages(){
+  return (uint)PHYSTOP-(uint)end;
+}
+
 
 // Initialization happens in two phases.
 // 1. main() calls kinit1() while still using entrypgdir to place just
@@ -63,7 +73,7 @@ kfree(char *v)
 
   if((uint)v % PGSIZE || v < end || v2p(v) >= PHYSTOP)
     panic("kfree");
-
+  freePages++;
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
@@ -83,6 +93,7 @@ char* kalloc(void){
   struct run *r;
   if(kmem.use_lock)
     acquire(&kmem.lock);
+  freePages--;
   r = kmem.freelist;
   if(r)
     kmem.freelist = r->next;
