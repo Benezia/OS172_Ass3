@@ -769,7 +769,7 @@ int writePageToFile(struct proc * p, int userPageVAddr, pde_t *pgdir) {
   p->fileCtrlr[freePlace].state = USED;
   p->fileCtrlr[freePlace].userPageVAddr = userPageVAddr;
   p->fileCtrlr[freePlace].pgdir = pgdir;
-  p->fileCtrlr[freePlace].accessCount = 0;
+  //p->fileCtrlr[freePlace].accessCount = 0;
   p->fileCtrlr[freePlace].loadOrder = 0;
   return retInt;
 }

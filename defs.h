@@ -194,6 +194,7 @@ int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 int 			pageIsInFile(int vAddr, pde_t *pgdir);
 int 			getPageFromFile(int vAddr);
+void			updateAccessCounters();
 void			printRamCtrlr(); //debugging
 void 			printFileCtrlr();	//debugging
 

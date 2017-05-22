@@ -217,7 +217,7 @@ exit(void)
   if (proc->pid > 2) {
     removeSwapFile(proc);
     printFileCtrlr();
-    //printRamCtrlr();
+    printRamCtrlr();
   }
 
 

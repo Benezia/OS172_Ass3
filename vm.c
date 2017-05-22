@@ -211,7 +211,6 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
-
 int getPagePAddr(int userPageVAddr, pde_t * pgdir){
   pte_t *pte;
   pte = walkpgdir(pgdir, (int*)userPageVAddr, 0);
@@ -253,23 +252,15 @@ int pageIsInFile(int userPageVAddr, pde_t * pgdir) {
 
 
 
-int getRAMCtrlrIndex(int isMax){
+int getLIFO(){
   int i; 
-  int pageIndex = 0;
-  int loadOrder = proc->ramCtrlr[0].loadOrder;
-  for (i = 1; i < MAX_PYSC_PAGES; i++) {
-    if (proc->ramCtrlr[i].state == USED) {
-      if (isMax) {
-        if (proc->ramCtrlr[i].loadOrder > loadOrder) {
+  int pageIndex = -1;
+  uint loadOrder = 0;
+
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED && proc->ramCtrlr[i].loadOrder > loadOrder) {
           loadOrder = proc->ramCtrlr[i].loadOrder;
-          pageIndex = i;
-        }
-      } else {
-        if (proc->ramCtrlr[i].loadOrder <= loadOrder) {
-          loadOrder = proc->ramCtrlr[i].loadOrder;
-          pageIndex = i;
-        }
-      }
+          pageIndex = i;          
     }
   }
   return pageIndex;
@@ -277,19 +268,63 @@ int getRAMCtrlrIndex(int isMax){
 
 
 
+
+  int getSCFIFO(){
+    pte_t * pte;
+    int i = 0;
+    int pageIndex = -1;
+    uint loadOrder = 0xFFFFFFFF;
+
+     while (i < MAX_PYSC_PAGES) {
+        if (proc->ramCtrlr[i].state == USED && proc->ramCtrlr[i].loadOrder <= loadOrder){
+          pte = walkpgdir(proc->ramCtrlr[i].pgdir, (char*)proc->ramCtrlr[i].userPageVAddr,0);
+          if (*pte & PTE_A) {
+            *pte &= ~PTE_A; // turn off PTE_A flag
+             proc->ramCtrlr[i].loadOrder = proc->loadOrderCounter++;
+             i = -1;
+          } 
+          else{
+            pageIndex = i;
+            loadOrder = proc->ramCtrlr[i].loadOrder;
+          }
+        }
+        i++;
+     }  
+    return pageIndex;
+  }
+
+
+int getLAP(){
+
+  return 0;
+}
+
 int getPageOutIndex(){
   #if LIFO
-    return getRAMCtrlrIndex(1);
+    return getLIFO();
   #endif
   #if SCFIFO
-    //TODO: SECOND CHANCE FIFO!!!!
-    return getRAMCtrlrIndex(0);
+    return getSCFIFO();
   #endif
   #if LAP
-    return -1; //TODO LAP
+    return getLAP();
   #endif
   return -1; //TODO DEFAULT
 }
+
+void updateAccessCounters(){
+  pte_t * pte;
+  int i;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    pte = walkpgdir(proc->ramCtrlr[i].pgdir, (char*)proc->ramCtrlr[i].userPageVAddr,0);
+    if (*pte & PTE_A) {
+      *pte &= ~PTE_A; // turn off PTE_A flag
+       proc->ramCtrlr[i].accessCount++;
+    } 
+  }
+}
+
+
 
 int getFreeRamCtrlrIndex() {
   if (proc == 0)
@@ -315,8 +350,8 @@ void printRamCtrlr(){
       cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
       pte_t *pte;
       pte = walkpgdir(proc->fileCtrlr[i].pgdir, (int*)proc->fileCtrlr[i].userPageVAddr, 0);
-      cprintf("\t PTE: %x\n", *pte);
-      //cprintf("\t Page Access Count: %d\n", proc->ramCtrlr[i].accessCount);
+      cprintf("\t PTE: %x PTR: %x\n", *pte, pte);
+      cprintf("\t Page Access Count: %d\n", proc->ramCtrlr[i].accessCount);
       cprintf("\n");
 
     } else
@@ -334,8 +369,8 @@ void printFileCtrlr(){
       cprintf("\t User Virtual Addr: 0x%p\n", proc->fileCtrlr[i].userPageVAddr);
       pte_t *pte;
       pte = walkpgdir(proc->fileCtrlr[i].pgdir, (int*)proc->fileCtrlr[i].userPageVAddr, 0);
-      cprintf("\t PTE: %x\n", *pte);
-      //cprintf("\t Page Access Count: %d\n", proc->fileCtrlr[i].accessCount);
+      cprintf("\t PTE: %x PTR: %x\n", *pte, pte);
+      cprintf("\t Page Access Count: %d\n", proc->fileCtrlr[i].accessCount);
       cprintf("\n");
     } else
       cprintf("\t PageIndex: %d UNUSED\n", i);

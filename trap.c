@@ -51,6 +51,8 @@ void trap(struct trapframe *tf){
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
+      if (proc != 0 && proc->pid > 2)
+        updateAccessCounters();
     }
     lapiceoi();
     break;
