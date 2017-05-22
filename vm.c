@@ -349,7 +349,7 @@ void printRamCtrlr(){
       cprintf("\t Page Directory: 0x%p\n", proc->ramCtrlr[i].pgdir);
       cprintf("\t User Virtual Addr: 0x%p\n", proc->ramCtrlr[i].userPageVAddr);
       pte_t *pte;
-      pte = walkpgdir(proc->fileCtrlr[i].pgdir, (int*)proc->fileCtrlr[i].userPageVAddr, 0);
+      pte = walkpgdir(proc->ramCtrlr[i].pgdir, (int*)proc->ramCtrlr[i].userPageVAddr, 0);
       cprintf("\t PTE: %x PTR: %x\n", *pte, pte);
       cprintf("\t Page Access Count: %d\n", proc->ramCtrlr[i].accessCount);
       cprintf("\n");
@@ -401,8 +401,8 @@ int getPageFromFile(int cr2){
   char *v = p2v(outPagePAddr);
   kfree(v); //free swapped page
   cprintf("FAULT: RAM->File: %d, %p\n", outIndex, outPage.userPageVAddr);
-  // printRamCtrlr(); //DEBUGGING
-  // printFileCtrlr(); //DEBUGGING
+  //printRamCtrlr(); //DEBUGGING
+  //printFileCtrlr(); //DEBUGGING
   return 1;
 }
 

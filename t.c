@@ -8,7 +8,7 @@
 int main(int argc, char *argv[]){
 	char * mtest; //allocates 13 pages (sums to 16), vm.c puts page #15 in file.
 	char * mtest2;
-	for (int i = 0; i<2000; i++){
+	for (int i = 0; i<20; i++){
 		mtest = malloc (50000);
 		mtest[48000] = 'F'; // accesses page #15 (currently on file in lifo)
 							// vm.c should bring back page #15 instead of #16
@@ -18,7 +18,7 @@ int main(int argc, char *argv[]){
 		mtest[48002] = 'L'; // accesses page #15 (currently on file in lifo)
 							// vm.c should bring back page #15
 		mtest[48003] = 0;  	// accesses page #15 (now on ram) instead of #24
-		printf(1, "%s",&mtest[48000]);
+		printf(1, "%s\n",&mtest[48000]);
 		free(mtest);
 		free(mtest2);
 	}
