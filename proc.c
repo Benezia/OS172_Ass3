@@ -226,10 +226,10 @@ exit(void)
   }
   // if (!isNONEpolicy()){
     if (proc->pid > 2) {
-      //printFileCtrlr();
-     // printRamCtrlr();
+      printFileCtrlr();
+      printRamCtrlr();
       removeSwapFile(proc);
-     }
+    }
  // }
 
 
@@ -253,8 +253,13 @@ exit(void)
     }
   }
 
-  // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
+      
+  #if TRUE
+    procdump();
+  #endif
+    
+  // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
 }
