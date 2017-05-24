@@ -237,7 +237,7 @@ void fixPagedInPTE(int userPageVAddr, int pagePAddr, pde_t * pgdir){
   if (!pte)
     panic("PTE of swapped page is missing");
   if (*pte & PTE_P)
-  	panic("REMAP!");
+  	panic("PAGE IN REMAP!");
   *pte |= PTE_P | PTE_W | PTE_U;      //Turn on needed bits
   *pte &= ~PTE_PG;    								//Turn off inFile bit
   *pte |= pagePAddr;  								//Map PTE to the new Page
@@ -346,13 +346,13 @@ void printRamCtrlr(){
       pte_t *pte;
       pte = walkpgdir(proc->ramCtrlr[i].pgdir, (int*)proc->ramCtrlr[i].userPageVAddr, 0);
       cprintf("%d. uvAddr:  %p  \tdir: %p\tPTE: %x\tPTR: %x\t#Access: %d\t#Load %d\n",
-              i, proc->ramCtrlr[i].userPageVAddr, proc->ramCtrlr[i].pgdir, 
+              i+1, proc->ramCtrlr[i].userPageVAddr, proc->ramCtrlr[i].pgdir, 
               *pte, pte, proc->ramCtrlr[i].accessCount, proc->ramCtrlr[i].loadOrder);
 
     } else
-      cprintf("%d. UNUSED\n", i);
+      cprintf("%d. \n", i+1);
   }
-  cprintf("\n", i);
+  cprintf("\n");
 }
 
 void printFileCtrlr(){
@@ -363,11 +363,11 @@ void printFileCtrlr(){
       pte_t *pte;
       pte = walkpgdir(proc->fileCtrlr[i].pgdir, (int*)proc->fileCtrlr[i].userPageVAddr, 0);
       cprintf("%d. uvAddr:   %p   \tdir: %p\tPTE: 0000%x\tPTR: %x\n",
-              i, proc->fileCtrlr[i].userPageVAddr, proc->fileCtrlr[i].pgdir, *pte, pte);
+              i+1, proc->fileCtrlr[i].userPageVAddr, proc->fileCtrlr[i].pgdir, *pte, pte);
     } else
-      cprintf("%d. UNUSED\n", i);
+      cprintf("%d. \n", i+1);
   }
-  cprintf("\n", i);
+  cprintf("\n");
 }
 
 
@@ -599,7 +599,12 @@ pde_t* copyuvm(pde_t *pgdir, uint sz){
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P) && (!(*pte & PTE_PG)))
+    if (*pte & PTE_PG){
+    	fixPagedOutPTE(i, d);
+    	continue;
+    }
+
+    if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
@@ -611,6 +616,8 @@ pde_t* copyuvm(pde_t *pgdir, uint sz){
     if(mappages(d, (void*)i, PGSIZE, v2p(mem), flags) < 0)
       goto bad;
   }
+  printRamCtrlr();
+  printFileCtrlr();
   //cprintf("copyuvm: copied %d pages (size %d) from proc %d (sz: %d, PDE %p) to PDE %p\n", 
   //  j, j*PGSIZE, proc->pid, proc->sz, pgdir, d);
   return d;

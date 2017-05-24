@@ -20,10 +20,11 @@ void test2(){
   if (fork() == 0){ //is son
     printf(1, "%s\n",&mtest[48000]); // should print AAAAA...
     printf(1, "%s\n",&mtest[20000]); // should print BBBBB...
+    free(mtest);
     
   } else { //is parent
-    
     wait();
+    free(mtest);
   }
 
 }
