@@ -73,7 +73,7 @@ found:
   //if (!isNONEpolicy()){
     if(p->pid > 2){
       createSwapFile(p);
-     }
+    }
   // }
 
   // Set up new context to start executing at forkret,
@@ -226,8 +226,8 @@ exit(void)
   }
   // if (!isNONEpolicy()){
     if (proc->pid > 2) {
-      printFileCtrlr();
       printRamCtrlr();
+      printFileCtrlr();
       removeSwapFile(proc);
     }
  // }

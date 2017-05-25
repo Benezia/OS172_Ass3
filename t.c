@@ -5,25 +5,47 @@
 
 
 
-void test2(){
+void lifoTest(){
   int i;
   char * mtest;
   mtest = malloc (50000); //allocates 13 pages (sums to 16), vm.c puts page #15 in file.
-  for (i = 0; i < 10; i++) { 
-    mtest[48000+i] = 'A'; //get #15 from file to ram
-    mtest[20000+i] = 'B'; //get #14 from file to ram
+  for (i = 0; i < 4100; i++) { 
+    mtest[30000+i] = ' '; 
+    mtest[34000+i] = ' ';
   }
-  mtest[48000+i] = 0;
-  mtest[20000+i] = 0;
+  printf(1, "filled 8100 pages with spaces...\n");
+
+  for (i = 0; i < 50; i++) { 
+    mtest[49100+i] = 'A'; //last six A's stored in page #16, the rest in #15
+    mtest[45200+i] = 'B'; //all B's are stored in page #15.
+  }
+  mtest[49100+i] = 0;
+  mtest[45200+i] = 0;
   printf(1, "FORKING...\n");
   
   if (fork() == 0){ //is son
-    printf(1, "%s\n",&mtest[48000]); // should print AAAAA...
-    printf(1, "%s\n",&mtest[20000]); // should print BBBBB...
+  	printf(1,"SON\n");
+    printf(1, "AA PAGE INDEX: %d\n", (int)&mtest[49100]%4096);
+    printf(1, "BB PAGE INDEX: %d\n", (int)&mtest[45200]%4096);
+
+    for (i = 40; i < 50; i++) { 
+	    mtest[49100+i] = 'C'; //changes last ten A's to C
+	    mtest[45200+i] = 'D'; //changes last ten B's to D
+  	}
+    printf(1, "%s\n",&mtest[49100]); // should print AAAAA..CCC...
+    printf(1, "%s\n",&mtest[45200]); // should print BBBBB..DDD...
+  	printf(1,"\n");
     free(mtest);
-    
+    exit();
   } else { //is parent
     wait();
+  	printf(1,"PARENT:\n");
+    printf(1, "AA PAGE INDEX: %d\n", (int)&mtest[49100]%4096);
+    printf(1, "BB PAGE INDEX: %d\n", (int)&mtest[45200]%4096);
+    printf(1, "%s\n",&mtest[49100]); // should print AAAAA...
+    printf(1, "%s\n",&mtest[45200]); // should print BBBBB...
+
+
     free(mtest);
   }
 
@@ -50,6 +72,6 @@ void test1(){
 
 
 int main(int argc, char *argv[]){
-  test2();
-
+  lifoTest();
+  exit();
 }

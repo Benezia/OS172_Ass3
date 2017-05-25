@@ -760,6 +760,27 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
+//for debugging
+void printPage(struct proc * p, int j){
+  char buff[PGSIZE];
+  char printBuff[2];
+  printBuff[1] = 0;
+  readFromSwapFile(p, buff, PGSIZE*j, PGSIZE);
+  int i;
+  int h = 0; //for newline
+  for (i=0; i<PGSIZE; i++){
+    if (buff[i] == 0)
+      continue;
+    h++;
+    if (h%16 == 0)
+      cprintf("\n");
+    printBuff[0] = buff[i];
+    cprintf("%d.%s ",i, printBuff);
+  }
+  cprintf("\n");
+}
+
+
 int writePageToFile(struct proc * p, int userPageVAddr, pde_t *pgdir) {
   int freePlace = getFreeSlot(p);
   int retInt = writeToSwapFile(p, (char*)userPageVAddr, PGSIZE*freePlace, PGSIZE);
@@ -769,7 +790,7 @@ int writePageToFile(struct proc * p, int userPageVAddr, pde_t *pgdir) {
   p->fileCtrlr[freePlace].state = USED;
   p->fileCtrlr[freePlace].userPageVAddr = userPageVAddr;
   p->fileCtrlr[freePlace].pgdir = pgdir;
-  //p->fileCtrlr[freePlace].accessCount = 0;
+  p->fileCtrlr[freePlace].accessCount = 0;
   p->fileCtrlr[freePlace].loadOrder = 0;
   return retInt;
 }
@@ -781,10 +802,9 @@ int readPageFromFile(struct proc * p, int ramCtrlrIndex, int userPageVAddr, char
   for (i = 0; i < maxStructCount; i++) {
     if (p->fileCtrlr[i].userPageVAddr == userPageVAddr) {
       retInt = readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
-      cprintf("TRAP14: FILE->RAM: %d, %p\n", i, userPageVAddr);
+      cprintf("TRAP14: FILE->RAM: %d, %p, %p\n", i, userPageVAddr, p->fileCtrlr[i].pgdir);
       if (retInt == -1)
         break; //error in read
-
       p->ramCtrlr[ramCtrlrIndex] = p->fileCtrlr[i];
       p->ramCtrlr[ramCtrlrIndex].loadOrder = proc->loadOrderCounter++;
       p->fileCtrlr[i].state = NOTUSED;
@@ -819,15 +839,18 @@ int createSwapFile(struct proc* p){
   return 0;
 }
 
-
 void copySwapFile(struct proc* fromP, struct proc* toP){
   if (fromP->pid < 3)
     return;
   char buff[PGSIZE];
   int i;
   for (i = 0; i < MAX_TOTAL_PAGES-MAX_PYSC_PAGES; i++){
-    readFromSwapFile(fromP, buff, PGSIZE*i, PGSIZE);
-    writeToSwapFile(toP, buff, PGSIZE, PGSIZE);
+    if (proc->fileCtrlr[i].state == USED){
+      if (readFromSwapFile(fromP, buff, PGSIZE*i, PGSIZE) != PGSIZE)
+        panic("CopySwapFile error");
+      if (writeToSwapFile(toP, buff, PGSIZE*i, PGSIZE) != PGSIZE)
+        panic("CopySwapFile error");
+    }
   }
 }
 
