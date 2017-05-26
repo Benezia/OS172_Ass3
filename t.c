@@ -3,9 +3,6 @@
 #include "user.h"
 #include "fs.h"
 
-
-
-
 void lapDance(){
 	int i;
 	int j;

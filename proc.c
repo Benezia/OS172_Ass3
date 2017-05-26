@@ -200,11 +200,6 @@ fork(void)
   return pid;
 }
 
-
-int procsize(void){
-  return proc->sz;
-}
-
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -225,11 +220,8 @@ exit(void)
     }
   }
   // if (!isNONEpolicy()){
-    if (proc->pid > 2) {
-      printRamCtrlr();
-      printFileCtrlr();
+    if (proc->pid > 2) 
       removeSwapFile(proc);
-    }
  // }
 
 

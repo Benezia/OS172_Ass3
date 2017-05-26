@@ -7,11 +7,6 @@
 #include "mmu.h"
 #include "proc.h"
 
-
-int sys_procsize(void){
-  return procsize();
-}
-
 int
 sys_fork(void)
 {

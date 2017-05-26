@@ -316,8 +316,6 @@ int getPageOutIndex(){
     return getSCFIFO();
   #endif
   #if LAP
-    cprintf("CHOOSING WITH LAP: \n");
-    printRamCtrlr();
     return getLAP();
   #endif
   return -1; //TODO DEFAULT
@@ -388,7 +386,7 @@ void printFileCtrlr(){
 static char buff[PGSIZE]; //buffer used to store swapped page in getPageFromFile method
 
 int getPageFromFile(int cr2){
-  cprintf("TRAP14!: %x\n", cr2);
+  //cprintf("TRAP14!: %x\n", cr2);
   proc->faultCounter++;
   int userPageVAddr = PGROUNDDOWN(cr2);
   char * newPg = kalloc();
@@ -412,9 +410,7 @@ int getPageFromFile(int cr2){
   fixPagedOutPTE(outPage.userPageVAddr, outPage.pgdir);
   char *v = p2v(outPagePAddr);
   kfree(v); //free swapped page
-  cprintf("TRAP14: RAM->File: %d, %p, %p\n", outIndex, outPage.userPageVAddr, outPage.pgdir);
-  //printRamCtrlr(); //DEBUGGING
-  //printFileCtrlr(); //DEBUGGING
+  //cprintf("TRAP14: RAM->File: %d, %p, %p\n", outIndex, outPage.userPageVAddr, outPage.pgdir);
   return 1;
 }
 
@@ -431,7 +427,7 @@ void addToRamCtrlr(pde_t *pgdir, uint userPageVAddr) {
 void swap(pde_t *pgdir, uint userPageVAddr){
   proc->countOfPagedOut++;
   int outIndex = getPageOutIndex();
-  cprintf("SWAP: RAM->File: %d, %p\n", outIndex, proc->ramCtrlr[outIndex].userPageVAddr);
+  //cprintf("SWAP: RAM->File: %d, %p\n", outIndex, proc->ramCtrlr[outIndex].userPageVAddr);
   int outPagePAddr = getPagePAddr(proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
   writePageToFile(proc, proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
   char *v = p2v(outPagePAddr);
@@ -439,8 +435,6 @@ void swap(pde_t *pgdir, uint userPageVAddr){
   proc->ramCtrlr[outIndex].state = NOTUSED;
   fixPagedOutPTE(proc->ramCtrlr[outIndex].userPageVAddr, proc->ramCtrlr[outIndex].pgdir);
   addToRamCtrlr(pgdir, userPageVAddr);
-  //printRamCtrlr(); //DEBUGGING
-  //printFileCtrlr(); //DEBUGGING
 }
 
 
@@ -474,7 +468,7 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
     mem = kalloc();
     i++;
     if(mem == 0){
-    //  cprintf("allocuvm out of memory\n");
+      cprintf("allocuvm out of memory\n");
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
@@ -489,11 +483,9 @@ int allocuvm(pde_t *pgdir, uint oldsz, uint newsz){
 	    }
 	  }
 
-    cprintf("allocuvm: allocated page: %p on %p\n", a, pgdir);
+    //cprintf("allocuvm: allocated page: %p on %p\n", a, pgdir);
 
   }
-  printRamCtrlr();
-  printFileCtrlr();
  // cprintf("allocuvm: proc %d asked for %d, was allocated %d (%d) new pages on %p (new size: %d) \n",
   //       proc->pid, newsz-oldsz, i, i*PGSIZE, pgdir, newsz);
 
@@ -554,7 +546,7 @@ int deallocuvm(pde_t *pgdir, uint oldsz, uint newsz){
         panic("kfree");
       char *v = p2v(pa);
       kfree(v); //free page
-      cprintf("deallocuvm: deallocated page: %p on %p\n", a, pgdir);
+      //cprintf("deallocuvm: deallocated page: %p on %p\n", a, pgdir);
       if (!isNONEpolicy())
       	removeFromRamCtrlr(a, pgdir);
     
@@ -562,9 +554,7 @@ int deallocuvm(pde_t *pgdir, uint oldsz, uint newsz){
       *pte = 0;
     }
   }
-  cprintf("de-allocuvm: %d pages were freed (size %d) from %p\n", i, i*PGSIZE, pgdir);
-  printRamCtrlr();
-  printFileCtrlr();
+  //cprintf("de-allocuvm: %d pages were freed (size %d) from %p\n", i, i*PGSIZE, pgdir);
   return newsz;
 }
 
@@ -627,14 +617,12 @@ pde_t* copyuvm(pde_t *pgdir, uint sz){
       goto bad;
     memmove(mem, (char*)p2v(pa), PGSIZE);
     j++;
-    cprintf("copyuvm: copied page: %p to %p from dir %p to dir %p\n", i, v2p(mem), pgdir, d);
+    //cprintf("copyuvm: copied page: %p to %p from dir %p to dir %p\n", i, v2p(mem), pgdir, d);
     if(mappages(d, (void*)i, PGSIZE, v2p(mem), flags) < 0)
       goto bad;
   }
-  cprintf("copyuvm: copied %d pages (size %d) from proc %d (sz: %d, PDE %p) to PDE %p\n", 
-   j, j*PGSIZE, proc->pid, proc->sz, pgdir, d);
-  printRamCtrlr();
-  printFileCtrlr();
+  // cprintf("copyuvm: copied %d pages (size %d) from proc %d (sz: %d, PDE %p) to PDE %p\n", 
+  //  j, j*PGSIZE, proc->pid, proc->sz, pgdir, d);
   return d;
 
 bad:

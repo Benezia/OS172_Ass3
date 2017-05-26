@@ -802,7 +802,6 @@ int readPageFromFile(struct proc * p, int ramCtrlrIndex, int userPageVAddr, char
   for (i = 0; i < maxStructCount; i++) {
     if (p->fileCtrlr[i].userPageVAddr == userPageVAddr) {
       retInt = readFromSwapFile(p, buff, i*PGSIZE, PGSIZE);
-      cprintf("TRAP14: FILE->RAM: %d, %p, %p\n", i, userPageVAddr, p->fileCtrlr[i].pgdir);
       if (retInt == -1)
         break; //error in read
       p->ramCtrlr[ramCtrlrIndex] = p->fileCtrlr[i];
@@ -828,8 +827,7 @@ int createSwapFile(struct proc* p){
 
 	p->swapFile = filealloc();
 	if (p->swapFile == 0)
-	panic("no slot for files on /store");
-
+	 panic("no slot for files on /store");
 	p->swapFile->ip = in;
 	p->swapFile->type = FD_INODE;
 	p->swapFile->off = 0;
