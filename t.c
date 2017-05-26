@@ -5,6 +5,21 @@
 
 
 
+
+void lapDance(){
+	int i;
+	int j;
+	int PGSZ = 4096;
+	char * mtest = malloc(70000);
+	for (i = 0; i<50000; i++)
+		mtest[i] = 'A'; //make sure all pages are lineary connected through malloc
+	for (i = 0; i<50000; i+=PGSZ){
+		for (j = 0; j<i; j+=PGSZ)
+			printf(1, "%d ", (int)mtest[j]);
+	}
+	printf(1,"\n");
+}
+
 void lifoTest(){
   int i;
   char * mtest;
@@ -44,8 +59,6 @@ void lifoTest(){
     printf(1, "BB PAGE INDEX: %d\n", (int)&mtest[45200]%4096);
     printf(1, "%s\n",&mtest[49100]); // should print AAAAA...
     printf(1, "%s\n",&mtest[45200]); // should print BBBBB...
-
-
     free(mtest);
   }
 
@@ -72,6 +85,6 @@ void test1(){
 
 
 int main(int argc, char *argv[]){
-  lifoTest();
+  lapDance();
   exit();
 }

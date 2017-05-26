@@ -295,8 +295,17 @@ int getLIFO(){
 
 
 int getLAP(){
+  int i; 
+  int pageIndex = -1;
+  uint minAccess = 0xffffffff;
 
-  return 0;
+  for (i = 0; i < MAX_PYSC_PAGES; i++) {
+    if (proc->ramCtrlr[i].state == USED && proc->ramCtrlr[i].accessCount <= minAccess) {
+          minAccess = proc->ramCtrlr[i].accessCount;
+          pageIndex = i;          
+    }
+  }
+  return pageIndex;
 }
 
 int getPageOutIndex(){
@@ -306,25 +315,27 @@ int getPageOutIndex(){
   #if SCFIFO
     return getSCFIFO();
   #endif
-  // #if LAP
-  //   return getLAP();
-  // #endif
+  #if LAP
+    cprintf("CHOOSING WITH LAP: \n");
+    printRamCtrlr();
+    return getLAP();
+  #endif
   return -1; //TODO DEFAULT
 }
 
-void updateAccessCounters(){
+void updateAccessCounters(struct proc * p){
   pte_t * pte;
   int i;
   for (i = 0; i < MAX_PYSC_PAGES; i++) {
-    pte = walkpgdir(proc->ramCtrlr[i].pgdir, (char*)proc->ramCtrlr[i].userPageVAddr,0);
-    if (*pte & PTE_A) {
-      *pte &= ~PTE_A; // turn off PTE_A flag
-       proc->ramCtrlr[i].accessCount++;
+    if (p->ramCtrlr[i].state == USED){
+      pte = walkpgdir(p->ramCtrlr[i].pgdir, (char*)p->ramCtrlr[i].userPageVAddr,0);
+      if (*pte & PTE_A) {
+        *pte &= ~PTE_A; // turn off PTE_A flag
+         p->ramCtrlr[i].accessCount++;
+      }
     } 
   }
 }
-
-
 
 int getFreeRamCtrlrIndex() {
   if (proc == 0)
@@ -377,9 +388,8 @@ void printFileCtrlr(){
 static char buff[PGSIZE]; //buffer used to store swapped page in getPageFromFile method
 
 int getPageFromFile(int cr2){
-  cprintf("TRAP14!\n");
+  cprintf("TRAP14!: %x\n", cr2);
   proc->faultCounter++;
-  proc->countOfPagedOut++;
   int userPageVAddr = PGROUNDDOWN(cr2);
   char * newPg = kalloc();
   memset(newPg, 0, PGSIZE);
@@ -390,6 +400,7 @@ int getPageFromFile(int cr2){
     readPageFromFile(proc, outIndex, userPageVAddr, (char*)userPageVAddr);
     return 1; //Operation was successful
   }
+  proc->countOfPagedOut++;
   //If reached here - Swapping is needed.
   outIndex = getPageOutIndex(); //select a page to swap to file
   struct pagecontroller outPage = proc->ramCtrlr[outIndex];

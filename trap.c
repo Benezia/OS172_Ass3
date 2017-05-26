@@ -11,6 +11,7 @@
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
+extern void updateLap();
 struct spinlock tickslock;
 uint ticks;
 
@@ -32,6 +33,7 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+
 //PAGEBREAK: 41
 void trap(struct trapframe *tf){
   if(tf->trapno == T_SYSCALL){
@@ -43,7 +45,6 @@ void trap(struct trapframe *tf){
       exit();
     return;
   }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
@@ -51,8 +52,9 @@ void trap(struct trapframe *tf){
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
-      if (proc != 0 && proc->pid > 2)
-        updateAccessCounters();
+      #if LAP
+        updateLap(); //defined in proc.c due to ptable usage
+      #endif
     }
     lapiceoi();
     break;

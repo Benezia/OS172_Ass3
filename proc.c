@@ -498,6 +498,17 @@ int getPagedOutAmout(struct proc* p){
   return amout;
 }
 
+void updateLap(){
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid > 2 && p->state > 1 && p->state < 5) //proc is either running, runnable or sleeping
+      updateAccessCounters(p); //implemented in vm.c
+  }
+  release(&ptable.lock);
+}
+
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
