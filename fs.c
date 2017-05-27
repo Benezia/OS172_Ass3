@@ -760,27 +760,6 @@ int getFreeSlot(struct proc * p) {
   return -1; //file is full
 }
 
-//for debugging
-void printPage(struct proc * p, int j){
-  char buff[PGSIZE];
-  char printBuff[2];
-  printBuff[1] = 0;
-  readFromSwapFile(p, buff, PGSIZE*j, PGSIZE);
-  int i;
-  int h = 0; //for newline
-  for (i=0; i<PGSIZE; i++){
-    if (buff[i] == 0)
-      continue;
-    h++;
-    if (h%16 == 0)
-      cprintf("\n");
-    printBuff[0] = buff[i];
-    cprintf("%d.%s ",i, printBuff);
-  }
-  cprintf("\n");
-}
-
-
 int writePageToFile(struct proc * p, int userPageVAddr, pde_t *pgdir) {
   int freePlace = getFreeSlot(p);
   int retInt = writeToSwapFile(p, (char*)userPageVAddr, PGSIZE*freePlace, PGSIZE);

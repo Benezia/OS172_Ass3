@@ -70,11 +70,9 @@ found:
   p->faultCounter = 0;
   p->countOfPagedOut = 0;
 
-  //if (!isNONEpolicy()){
-    if(p->pid > 2){
+    if(p->pid > 2)
       createSwapFile(p);
-    }
-  // }
+    
 
   // Set up new context to start executing at forkret,
   // which returns to trapret.
@@ -160,7 +158,6 @@ fork(void)
     return -1;
   }
   np->sz = proc->sz;
-  //if (!isNONEpolicy()){
     if (proc->pid > 2){
       copySwapFile(proc, np);
       np->loadOrderCounter = proc->loadOrderCounter;
@@ -173,7 +170,6 @@ fork(void)
         np->fileCtrlr[i].pgdir = np->pgdir;   //replace parent pgdir with child new pgdir
       }
     }
- // }
 
   np->parent = proc;
   *np->tf = *proc->tf;
@@ -219,10 +215,8 @@ exit(void)
       proc->ofile[fd] = 0;
     }
   }
-  // if (!isNONEpolicy()){
-    if (proc->pid > 2) 
-      removeSwapFile(proc);
- // }
+  if (proc->pid > 2) 
+    removeSwapFile(proc);
 
 
   begin_op();
